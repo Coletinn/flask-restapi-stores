@@ -3,7 +3,7 @@ import secrets
 
 from flask import Flask
 from flask_smorest import Api
-from flask_jwt_extended import JWTManager
+from flask_jwt_extended import JWTManagern_callback
 
 from resources.item import blp as ItemBlueprint
 from resources.store import blp as StoreBlueprint
@@ -30,8 +30,20 @@ def create_app(db_url=None):
 
     api = Api(app)
     
-    app.config["JWT_SECRET_KEY"] = secrets.SystemRandom().getrandbits(128)
-    jwt = JWTManager()
+    app.config["JWT_SECRET_KEY"] = str(secrets.SystemRandom().getrandbits(128))
+    jwt = JWTManager(app)
+
+    @jwt.expired_token_loader
+    def expired_token_callback(jwt_header, jwt_payload):
+        return {"message": "The token has expired.", "error": "token_expired"}, 401
+
+    @jwt.invalid_token_loader
+    def invalid_token_callback(error):
+        return {"message": "Signature verification failed.", "error": "invalid_token"}, 401
+
+    @jwt.unauthorized_loader
+    def missing_token_callback(error):
+        return {"message": "Missing access token.", "error": "authorization_required"}, 401
 
     @app.before_request
     def create_tables():
